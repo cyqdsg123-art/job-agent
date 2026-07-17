@@ -81,11 +81,18 @@ def _ensure_bm25():
 
 
 def add_document(title: str, text: str, source: str, doc_id: str | None = None) -> str:
-    """入库一份文档：切块 → SQLite 存原文 → Chroma 存向量。可重复调用（覆盖同 id）。"""
+    """入库一份文档：按段落切块后入库。可重复调用（覆盖同 id）。"""
+    return add_document_chunks(title, chunk_text(text), source, doc_id)
+
+
+def add_document_chunks(
+    title: str, chunks: list[str], source: str, doc_id: str | None = None
+) -> str:
+    """入库预切好块的文档（代码仓库等自定义切块场景直接用这个）。"""
     doc_id = doc_id or f"doc-{uuid.uuid4().hex[:8]}"
     remove_document(doc_id)  # 幂等：先清旧数据
 
-    chunks = chunk_text(text)
+    chunks = [c for c in chunks if c.strip()]
     if not chunks:
         raise ValueError("文档内容为空")
 
@@ -146,8 +153,13 @@ def list_documents() -> list[KBDoc]:
         return list(s.exec(select(KBDoc).order_by(KBDoc.created_at.desc())).all())
 
 
-def hybrid_search(query: str, top_k: int = 5, candidate_n: int = 15) -> list[dict]:
-    """向量检索 + BM25 各取 candidate_n 条，RRF（k=60）融合后返回 top_k。"""
+def hybrid_search(
+    query: str, top_k: int = 5, candidate_n: int = 15, doc_id: str | None = None
+) -> list[dict]:
+    """向量检索 + BM25 各取 candidate_n 条，RRF（k=60）融合后返回 top_k。
+
+    doc_id 非空时只在该文档内检索（如限定某个代码仓库）。
+    """
     _ensure_bm25()
     rrf: dict[str, float] = {}
     hit_channel: dict[str, set] = {}
@@ -158,6 +170,7 @@ def hybrid_search(query: str, top_k: int = 5, candidate_n: int = 15) -> list[dic
         res = col.query(
             query_embeddings=[embed_query(query)],
             n_results=min(candidate_n, col.count()),
+            where={"doc_id": doc_id} if doc_id else None,
         )
         for rank, cid in enumerate(res["ids"][0]):
             rrf[cid] = rrf.get(cid, 0) + 1 / (60 + rank + 1)
@@ -167,12 +180,16 @@ def hybrid_search(query: str, top_k: int = 5, candidate_n: int = 15) -> list[dic
     if _bm25 is not None:
         scores = _bm25.get_scores(_tokenize(query))
         ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
-        for rank, idx in enumerate(ranked[:candidate_n]):
-            if scores[idx] <= 0:
+        picked = 0
+        for idx in ranked:
+            if scores[idx] <= 0 or picked >= candidate_n:
                 break
-            cid = _bm25_chunks[idx].id
-            rrf[cid] = rrf.get(cid, 0) + 1 / (60 + rank + 1)
-            hit_channel.setdefault(cid, set()).add("bm25")
+            chunk = _bm25_chunks[idx]
+            if doc_id and chunk.doc_id != doc_id:
+                continue
+            rrf[chunk.id] = rrf.get(chunk.id, 0) + 1 / (60 + picked + 1)
+            hit_channel.setdefault(chunk.id, set()).add("bm25")
+            picked += 1
 
     top_ids = sorted(rrf, key=rrf.get, reverse=True)[:top_k]
     if not top_ids:

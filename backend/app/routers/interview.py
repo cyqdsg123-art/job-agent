@@ -8,6 +8,7 @@ from sse_starlette.sse import EventSourceResponse
 from ..db import get_session
 from ..models import InterviewSession, JDOut, JobDescription
 from ..services.interviewer import MAX_ROUNDS, make_question, stream_feedback, stream_report
+from ..services.repo import RepoError, ingest_repo
 from ..services.resume import file_to_text
 
 router = APIRouter(prefix="/api/interview", tags=["interview"])
@@ -26,10 +27,11 @@ def _jd_dict(session: Session, jd_id: int) -> dict:
 async def start_interview(
     jd_id: int = Form(...),
     resume_text: str = Form(""),
+    repo: str = Form(""),
     resume_file: UploadFile | None = None,
     session: Session = Depends(get_session),
 ):
-    """开始一场模拟面试，返回第一题。"""
+    """开始一场模拟面试，返回第一题。repo 可选：本地仓库路径 / git 链接。"""
     text = resume_text.strip()
     if resume_file is not None:
         data = await resume_file.read()
@@ -38,15 +40,27 @@ async def start_interview(
     if not text:
         raise HTTPException(400, "请粘贴简历文本或上传简历文件")
 
+    # 可选：摄取候选人代码仓库，让面试官针对真实代码提问
+    repo_doc_id = ""
+    repo_profile = None
+    if repo.strip():
+        try:
+            info = ingest_repo(repo)
+            repo_doc_id = info["doc_id"]
+            repo_profile = info["profile"]
+        except RepoError as e:
+            raise HTTPException(422, str(e))
+
     jd = _jd_dict(session, jd_id)
     try:
-        q = make_question(jd, text, [])
+        q = make_question(jd, text, [], repo_doc_id)
     except RuntimeError as e:
         raise HTTPException(503, str(e))
 
     row = InterviewSession(
         jd_id=jd_id,
         resume_text=text,
+        repo_doc_id=repo_doc_id,
         rounds_json=json.dumps([{"q": q["question"], "focus": q["focus"]}], ensure_ascii=False),
     )
     session.add(row)
@@ -58,6 +72,7 @@ async def start_interview(
         "focus": q["focus"],
         "round": 1,
         "total_rounds": MAX_ROUNDS,
+        "repo_profile": repo_profile,
     }
 
 
@@ -82,14 +97,16 @@ def answer(sid: int, answer: str = Form(...), session: Session = Depends(get_ses
         try:
             # 1) 流式点评
             fb_parts: list[str] = []
-            for tok in stream_feedback(jd, row.resume_text, rounds[:-1], current["q"], text):
+            for tok in stream_feedback(
+                jd, row.resume_text, rounds[:-1], current["q"], text, row.repo_doc_id
+            ):
                 fb_parts.append(tok)
                 yield {"event": "feedback_delta", "data": json.dumps(tok, ensure_ascii=False)}
             current["feedback"] = "".join(fb_parts)
 
             if len(rounds) < MAX_ROUNDS:
                 # 2a) 出下一题
-                q = make_question(jd, row.resume_text, rounds)
+                q = make_question(jd, row.resume_text, rounds, row.repo_doc_id)
                 rounds.append({"q": q["question"], "focus": q["focus"]})
                 row.rounds_json = json.dumps(rounds, ensure_ascii=False)
                 session.add(row)

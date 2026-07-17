@@ -18,11 +18,26 @@ _PERSONA = """你是一位严格但友善的技术面试官，正在面试一名
 """
 
 
-def _context(jd: dict, resume_text: str, rounds: list[dict]) -> str:
+def _context(
+    jd: dict, resume_text: str, rounds: list[dict], repo_doc_id: str = "", query: str = ""
+) -> str:
     parts = [
         f"【岗位 JD】\n{json.dumps(jd, ensure_ascii=False)}",
         f"【候选人简历】\n{resume_text}",
     ]
+    # 候选人代码仓库：概览 + 按当前话题检索的真实代码片段
+    if repo_doc_id:
+        from .repo import repo_overview
+
+        overview = repo_overview(repo_doc_id)
+        if overview:
+            parts.append(f"【候选人代码仓库概览】\n{overview[:3000]}")
+        code_hits = hybrid_search(
+            query or jd.get("title", ""), top_k=4, doc_id=repo_doc_id
+        )
+        code = "\n\n".join(h["text"] for h in code_hits if h["chunk_id"] != f"{repo_doc_id}-0")
+        if code:
+            parts.append(f"【候选人真实代码片段】\n{code[:6000]}")
     # 知识库里如有相关面经，给面试官做参考
     refs = hybrid_search(f"{jd.get('title', '')} 面试 常见问题", top_k=2)
     ref_texts = [r["text"] for r in refs if r.get("doc_id", "").startswith("doc-")]
@@ -36,24 +51,45 @@ def _context(jd: dict, resume_text: str, rounds: list[dict]) -> str:
     return "\n\n".join(parts)
 
 
-def make_question(jd: dict, resume_text: str, rounds: list[dict]) -> dict:
+def make_question(
+    jd: dict, resume_text: str, rounds: list[dict], repo_doc_id: str = ""
+) -> dict:
     """出下一题。返回 {"question": ..., "focus": 考察点}。"""
     system = _PERSONA + """
 根据材料出下一道面试题，输出 JSON：{"question": "题目", "focus": "考察点（一句话）"}
-要求：不与已问过的题目重复；题型在"项目深挖 / 技术原理 / 场景设计"之间轮换。只输出 JSON。"""
-    data = chat_json(system, _context(jd, resume_text, rounds))
+要求：不与已问过的题目重复；题型在"项目深挖 / 技术原理 / 场景设计"之间轮换。"""
+    if repo_doc_id:
+        system += """
+提供了候选人的真实代码：优先针对具体代码提问（引用文件名和代码里的实际做法，
+如"你在 xxx.py 里为什么先删除再插入"），考察候选人是否真正理解自己写的代码。"""
+    system += "\n只输出 JSON。"
+    # 用上一轮话题引导代码检索，让追问有连续性
+    last_topic = rounds[-1]["q"] if rounds else ""
+    data = chat_json(
+        system, _context(jd, resume_text, rounds, repo_doc_id, query=last_topic)
+    )
     return {"question": str(data.get("question", "")), "focus": str(data.get("focus", ""))}
 
 
-def stream_feedback(jd: dict, resume_text: str, rounds: list[dict], question: str, answer: str):
+def stream_feedback(
+    jd: dict,
+    resume_text: str,
+    rounds: list[dict],
+    question: str,
+    answer: str,
+    repo_doc_id: str = "",
+):
     """对刚才的回答做点评（流式）。"""
     system = _PERSONA + """
 候选人刚回答了你的问题。请给出简短点评（150 字内，Markdown）：
 - 答得好的点（如有）
 - 不足或遗漏的关键点
 - 一句"更好的回答思路"
-点评要具体、可操作，不要客套。"""
-    user = _context(jd, resume_text, rounds) + f"\n\n【本题】{question}\n【候选人回答】{answer}"
+点评要具体、可操作，不要客套。如提供了候选人真实代码，点评时可对照代码指出回答与实现是否一致。"""
+    user = (
+        _context(jd, resume_text, rounds, repo_doc_id, query=question)
+        + f"\n\n【本题】{question}\n【候选人回答】{answer}"
+    )
     yield from chat_stream(system, user)
 
 

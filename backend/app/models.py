@@ -53,6 +53,7 @@ class InterviewSession(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     jd_id: int = 0
     resume_text: str = ""
+    repo_doc_id: str = ""     # 关联的代码仓库知识库文档（可空）
     rounds_json: str = "[]"   # [{"q": 题目, "focus": 考察点, "a": 回答, "feedback": 点评}]
     status: str = "active"    # active / done
     report: str = ""          # 结束后的总结报告

@@ -17,6 +17,7 @@ export default function InterviewPage() {
   const [jds, setJds] = useState<JD[]>([]);
   const [jdId, setJdId] = useState(0);
   const [resume, setResume] = useState("");
+  const [repo, setRepo] = useState("");
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -57,7 +58,7 @@ export default function InterviewPage() {
     setError("");
     localStorage.setItem("resume_text", resume);
     try {
-      const r = await startInterview(jdId, resume);
+      const r = await startInterview(jdId, resume, repo);
       setSessionId(r.session_id);
       setMsgs([
         {
@@ -146,12 +147,26 @@ export default function InterviewPage() {
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
             />
           </div>
+          <div>
+            <label className="text-sm font-semibold block mb-1">
+              你的代码仓库（可选，强烈推荐）
+            </label>
+            <input
+              value={repo}
+              onChange={(e) => setRepo(e.target.value)}
+              placeholder="本地路径（如 D:\job-agent）或 GitHub/Gitee 链接"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              提供后面试官会读你的真实代码，针对具体实现提问（首次分析约 30 秒）
+            </p>
+          </div>
           <button
             onClick={start}
             disabled={busy || !jdId || !resume.trim()}
             className="px-5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium disabled:opacity-40 hover:bg-indigo-700"
           >
-            {busy ? "面试官准备第一题中…" : "开始面试"}
+            {busy ? (repo.trim() ? "分析仓库并准备第一题中…" : "面试官准备第一题中…") : "开始面试"}
           </button>
           {error && (
             <p className="text-sm text-rose-600 bg-rose-50 rounded-lg p-3">{error}</p>

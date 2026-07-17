@@ -148,14 +148,16 @@ export async function streamAsk(
 
 // ---------- 模拟面试 ----------
 
-/** 开始面试，返回第一题 */
+/** 开始面试，返回第一题。repo 可选：本地仓库路径或 git 链接 */
 export async function startInterview(
   jdId: number,
   resumeText: string,
+  repo?: string,
 ): Promise<InterviewStart> {
   const form = new FormData();
   form.append("jd_id", String(jdId));
   form.append("resume_text", resumeText);
+  if (repo?.trim()) form.append("repo", repo.trim());
   const res = await fetch("/api/interview/start", { method: "POST", body: form });
   return jsonOrThrow<InterviewStart>(res);
 }
