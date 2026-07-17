@@ -1,7 +1,7 @@
 "use client";
 
-/** 首页：上传招聘截图 → OCR + LLM 解析 → 展示结构化 JD */
-import { useRef, useState } from "react";
+/** 首页：上传/粘贴招聘截图 → OCR + LLM 解析 → 展示结构化 JD */
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import JDCard from "@/components/JDCard";
 import { parseJD, parseJDText, parseJDUrl } from "@/lib/api";
@@ -24,6 +24,26 @@ export default function HomePage() {
     setError("");
     setPreview(URL.createObjectURL(f));
   };
+
+  // Ctrl+V 直接粘贴剪贴板里的截图（Win+Shift+S 框选后无需保存文件）
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      // 在文本框里粘贴文字时不拦截
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === "TEXTAREA" || target?.tagName === "INPUT") return;
+      const item = Array.from(e.clipboardData?.items ?? []).find((i) =>
+        i.type.startsWith("image/"),
+      );
+      const f = item?.getAsFile();
+      if (f) {
+        e.preventDefault();
+        pick(f);
+      }
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleParse = async () => {
     if (!file) return;
@@ -96,7 +116,13 @@ export default function HomePage() {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={preview} alt="截图预览" className="max-h-64 mx-auto rounded" />
         ) : (
-          <p className="text-slate-400">点击选择或拖拽截图到这里</p>
+          <p className="text-slate-400">
+            点击选择 / 拖拽 / <b>Ctrl+V 直接粘贴</b>截图
+            <br />
+            <span className="text-xs">
+              网页禁止复制文字？Win+Shift+S 框选职位区域，回来 Ctrl+V 即可
+            </span>
+          </p>
         )}
       </div>
 
