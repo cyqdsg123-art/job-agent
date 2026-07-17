@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* 固定浅色主题，避免系统深色模式下与 slate 配色冲突 */
+body {
+  font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+}

@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+backend/venv/
+backend/.env
+backend/*.db
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 上传的临时文件
+backend/uploads/

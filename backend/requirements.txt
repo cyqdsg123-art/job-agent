@@ -1,0 +1,10 @@
+fastapi>=0.115
+uvicorn[standard]>=0.32
+sqlmodel>=0.0.22
+openai>=1.55
+langgraph>=0.2.60
+rapidocr-onnxruntime>=1.2
+pypdf>=5.1
+pydantic-settings>=2.6
+sse-starlette>=2.1
+python-multipart>=0.0.17
