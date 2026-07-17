@@ -75,14 +75,14 @@ export async function streamMatch(
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 
-    // SSE 帧以空行分隔；一帧内含 event: / data: 行
-    let sep: number;
-    while ((sep = buffer.indexOf("\n\n")) !== -1) {
-      const frame = buffer.slice(0, sep);
-      buffer = buffer.slice(sep + 2);
+    // SSE 帧以空行分隔（sse-starlette 用 \r\n 换行，需两种都兼容）
+    let m: RegExpMatchArray | null;
+    while ((m = buffer.match(/\r?\n\r?\n/)) && m.index !== undefined) {
+      const frame = buffer.slice(0, m.index);
+      buffer = buffer.slice(m.index + m[0].length);
       let event = "message";
       const dataLines: string[] = [];
-      for (const line of frame.split("\n")) {
+      for (const line of frame.split(/\r?\n/)) {
         if (line.startsWith("event:")) event = line.slice(6).trim();
         else if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
         // 忽略 id: / retry: / 注释行
