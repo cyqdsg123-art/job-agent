@@ -1,5 +1,12 @@
 /** 后端 API 封装：普通请求 + SSE 流式解析 */
-import type { JD, KBDocMeta, MatchHandlers, AskHandlers } from "./types";
+import type {
+  AskHandlers,
+  InterviewHandlers,
+  InterviewStart,
+  JD,
+  KBDocMeta,
+  MatchHandlers,
+} from "./types";
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -134,6 +141,41 @@ export async function streamAsk(
   await readSSE(res, (event, data) => {
     if (event === "sources") handlers.onSources?.(data as never);
     else if (event === "answer_delta") handlers.onAnswerDelta?.(data as string);
+    else if (event === "done") handlers.onDone?.(data as string);
+    else if (event === "error") handlers.onError?.(data as string);
+  });
+}
+
+// ---------- 模拟面试 ----------
+
+/** 开始面试，返回第一题 */
+export async function startInterview(
+  jdId: number,
+  resumeText: string,
+): Promise<InterviewStart> {
+  const form = new FormData();
+  form.append("jd_id", String(jdId));
+  form.append("resume_text", resumeText);
+  const res = await fetch("/api/interview/start", { method: "POST", body: form });
+  return jsonOrThrow<InterviewStart>(res);
+}
+
+/** 提交回答：SSE feedback_delta* → (question | report_delta* → done) */
+export async function answerInterview(
+  sessionId: number,
+  answer: string,
+  handlers: InterviewHandlers,
+): Promise<void> {
+  const form = new FormData();
+  form.append("answer", answer);
+  const res = await fetch(`/api/interview/${sessionId}/answer`, {
+    method: "POST",
+    body: form,
+  });
+  await readSSE(res, (event, data) => {
+    if (event === "feedback_delta") handlers.onFeedbackDelta?.(data as string);
+    else if (event === "question") handlers.onQuestion?.(data as never);
+    else if (event === "report_delta") handlers.onReportDelta?.(data as string);
     else if (event === "done") handlers.onDone?.(data as string);
     else if (event === "error") handlers.onError?.(data as string);
   });

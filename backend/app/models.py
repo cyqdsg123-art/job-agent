@@ -45,6 +45,20 @@ class KBChunk(SQLModel, table=True):
     text: str = ""
 
 
+# ---------- 模拟面试 ----------
+
+class InterviewSession(SQLModel, table=True):
+    """一场模拟面试：轮次历史以 JSON 存储，支持中断后回看。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    jd_id: int = 0
+    resume_text: str = ""
+    rounds_json: str = "[]"   # [{"q": 题目, "focus": 考察点, "a": 回答, "feedback": 点评}]
+    status: str = "active"    # active / done
+    report: str = ""          # 结束后的总结报告
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
 # ---------- LLM 结构化提取结果 ----------
 
 class ParsedJD(BaseModel):

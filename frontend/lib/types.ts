@@ -66,3 +66,28 @@ export interface AskHandlers {
   onDone?: (fullAnswer: string) => void;
   onError?: (message: string) => void;
 }
+
+// ---------- 模拟面试 ----------
+
+export interface InterviewStart {
+  session_id: number;
+  question: string;
+  focus: string;
+  round: number;
+  total_rounds: number;
+}
+
+export interface InterviewQuestion {
+  question: string;
+  focus: string;
+  round: number;
+  total_rounds: number;
+}
+
+export interface InterviewHandlers {
+  onFeedbackDelta?: (chunk: string) => void;
+  onQuestion?: (q: InterviewQuestion) => void;
+  onReportDelta?: (chunk: string) => void;
+  onDone?: (fullReport: string) => void;
+  onError?: (message: string) => void;
+}
