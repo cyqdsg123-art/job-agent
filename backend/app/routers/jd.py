@@ -1,7 +1,7 @@
-"""JD 路由：截图上传解析、列表、详情、删除。"""
+"""JD 路由：截图/URL 解析、列表、详情、删除。"""
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from sqlmodel import Session, select
 
 from ..db import get_session
@@ -9,22 +9,13 @@ from ..models import JDOut, JobDescription
 from ..services import kb
 from ..services.jd_parser import parse_jd_text
 from ..services.ocr import image_to_text
+from ..services.web import FetchError, fetch_page_text
 
 router = APIRouter(prefix="/api/jd", tags=["jd"])
 
 
-@router.post("/parse", response_model=JDOut)
-async def parse_jd(file: UploadFile, session: Session = Depends(get_session)):
-    """上传招聘截图 → OCR → LLM 结构化 → 入库。"""
-    image_bytes = await file.read()
-    if not image_bytes:
-        raise HTTPException(400, "文件为空")
-
-    raw_text = image_to_text(image_bytes)
-    if not raw_text.strip():
-        raise HTTPException(422, "未能从图片中识别出文字，请换一张更清晰的截图")
-
-    parsed = None
+def _parse_and_save(raw_text: str, session: Session) -> JDOut:
+    """LLM 结构化 → 存库 → 入知识库（截图与 URL 两条入口共用）。"""
     try:
         parsed = parse_jd_text(raw_text)
     except RuntimeError as e:  # 未配置 API Key 等环境问题
@@ -51,6 +42,32 @@ async def parse_jd(file: UploadFile, session: Session = Depends(get_session)):
         pass
 
     return JDOut.from_row(row)
+
+
+@router.post("/parse", response_model=JDOut)
+async def parse_jd(file: UploadFile, session: Session = Depends(get_session)):
+    """上传招聘截图 → OCR → LLM 结构化 → 入库。"""
+    image_bytes = await file.read()
+    if not image_bytes:
+        raise HTTPException(400, "文件为空")
+
+    raw_text = image_to_text(image_bytes)
+    if not raw_text.strip():
+        raise HTTPException(422, "未能从图片中识别出文字，请换一张更清晰的截图")
+    return _parse_and_save(raw_text, session)
+
+
+@router.post("/parse-url", response_model=JDOut)
+def parse_jd_url(url: str = Form(...), session: Session = Depends(get_session)):
+    """粘贴公开职位页链接 → 抓取正文 → LLM 结构化 → 入库。
+
+    仅适用于无登录墙的公开页面；Boss 直聘详情页等请用截图解析。
+    """
+    try:
+        raw_text = fetch_page_text(url.strip())
+    except FetchError as e:
+        raise HTTPException(422, str(e))
+    return _parse_and_save(raw_text, session)
 
 
 @router.get("", response_model=list[JDOut])

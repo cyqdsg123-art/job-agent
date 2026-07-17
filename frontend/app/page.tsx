@@ -4,12 +4,13 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import JDCard from "@/components/JDCard";
-import { parseJD } from "@/lib/api";
+import { parseJD, parseJDUrl } from "@/lib/api";
 import type { JD } from "@/lib/types";
 
 export default function HomePage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
+  const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<JD | null>(null);
@@ -29,6 +30,20 @@ export default function HomePage() {
     setError("");
     try {
       setResult(await parseJD(file));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "解析失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleParseUrl = async () => {
+    if (!url.trim()) return;
+    setLoading(true);
+    setError("");
+    setResult(null);
+    try {
+      setResult(await parseJDUrl(url));
     } catch (e) {
       setError(e instanceof Error ? e.message : "解析失败");
     } finally {
@@ -74,8 +89,32 @@ export default function HomePage() {
         disabled={!file || loading}
         className="px-5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium disabled:opacity-40 hover:bg-indigo-700"
       >
-        {loading ? "解析中（OCR + LLM，约 10 秒）…" : "开始解析"}
+        {loading ? "解析中（约 10 秒）…" : "开始解析"}
       </button>
+
+      {/* URL 导入：公开职位页 */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
+        <div className="text-sm font-semibold">或粘贴职位页链接</div>
+        <p className="text-xs text-slate-400">
+          适用于公司官网/校招网站等公开页面；Boss 直聘详情页有登录墙，请用截图
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleParseUrl()}
+            placeholder="https://公司官网/careers/职位页"
+            className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"
+          />
+          <button
+            onClick={handleParseUrl}
+            disabled={!url.trim() || loading}
+            className="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm disabled:opacity-40 hover:bg-slate-800"
+          >
+            {loading ? "抓取中…" : "抓取解析"}
+          </button>
+        </div>
+      </div>
 
       {error && (
         <p className="text-sm text-rose-600 bg-rose-50 rounded-lg p-3">{error}</p>

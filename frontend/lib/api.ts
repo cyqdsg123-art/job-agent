@@ -56,6 +56,14 @@ export async function listJDs(): Promise<JD[]> {
   return jsonOrThrow<JD[]>(await fetch("/api/jd"));
 }
 
+/** 粘贴公开职位页链接解析（登录墙页面会返回可读错误） */
+export async function parseJDUrl(url: string): Promise<JD> {
+  const form = new FormData();
+  form.append("url", url);
+  const res = await fetch("/api/jd/parse-url", { method: "POST", body: form });
+  return jsonOrThrow<JD>(res);
+}
+
 export async function deleteJD(id: number): Promise<void> {
   await fetch(`/api/jd/${id}`, { method: "DELETE" });
 }
