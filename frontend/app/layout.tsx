@@ -13,6 +13,7 @@ const nav = [
   { href: "/match", label: "简历匹配" },
   { href: "/ask", label: "岗位问答" },
   { href: "/interview", label: "模拟面试" },
+  { href: "/prep", label: "准备包" },
 ];
 
 export default function RootLayout({

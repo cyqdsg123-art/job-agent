@@ -146,6 +146,31 @@ export async function streamAsk(
   });
 }
 
+// ---------- 面试准备包 ----------
+
+/** 生成面试准备包：SSE prep_delta* → done */
+export async function streamPrep(
+  jdId: number,
+  resumeText: string,
+  repo: string,
+  handlers: {
+    onDelta?: (chunk: string) => void;
+    onDone?: (full: string) => void;
+    onError?: (message: string) => void;
+  },
+): Promise<void> {
+  const form = new FormData();
+  form.append("jd_id", String(jdId));
+  form.append("resume_text", resumeText);
+  if (repo.trim()) form.append("repo", repo.trim());
+  const res = await fetch("/api/prep", { method: "POST", body: form });
+  await readSSE(res, (event, data) => {
+    if (event === "prep_delta") handlers.onDelta?.(data as string);
+    else if (event === "done") handlers.onDone?.(data as string);
+    else if (event === "error") handlers.onError?.(data as string);
+  });
+}
+
 // ---------- 模拟面试 ----------
 
 /** 开始面试，返回第一题。repo 可选：本地仓库路径或 git 链接 */

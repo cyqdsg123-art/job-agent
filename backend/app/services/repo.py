@@ -101,9 +101,34 @@ _PROFILE_SYSTEM = """你是代码架构分析师。根据仓库文件树和关�
 只输出 JSON。"""
 
 
-def ingest_repo(source: str) -> dict:
-    """摄取仓库 → 知识库。返回 {doc_id, profile, files_indexed, chunks}。"""
+def ingest_repo(source: str, refresh: bool = False) -> dict:
+    """摄取仓库 → 知识库。返回 {doc_id, profile, files_indexed, chunks}。
+
+    同一仓库已入库时默认直接复用（refresh=True 强制重新分析）。
+    """
     root = _resolve(source.strip())
+    doc_id = f"repo-{hashlib.md5(str(root).encode()).hexdigest()[:8]}"
+
+    # 快路径：已入库直接复用，免去重复嵌入
+    if not refresh:
+        from sqlmodel import Session, select
+        from ..db import engine
+        from ..models import KBChunk, KBDoc
+
+        with Session(engine) as s:
+            doc = s.get(KBDoc, doc_id)
+            if doc:
+                n_chunks = len(
+                    s.exec(select(KBChunk).where(KBChunk.doc_id == doc_id)).all()
+                )
+                return {
+                    "doc_id": doc_id,
+                    "profile": None,  # 概览在块 0，用 repo_overview() 取
+                    "files_indexed": -1,
+                    "chunks": n_chunks,
+                    "reused": True,
+                }
+
     files = _collect(root)
     if not files:
         raise RepoError("仓库里没有找到可分析的代码文件")
@@ -120,7 +145,6 @@ def ingest_repo(source: str) -> dict:
     for path, content in files:
         chunks.extend(_chunk_file(path, content))
 
-    doc_id = f"repo-{hashlib.md5(str(root).encode()).hexdigest()[:8]}"
     kb.add_document_chunks(
         title=f"代码仓库：{profile.get('name') or root.name}",
         chunks=chunks,
