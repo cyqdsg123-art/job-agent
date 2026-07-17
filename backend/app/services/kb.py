@@ -21,10 +21,18 @@ from .embedder import embed_docs, embed_query
 _CHUNK_SIZE = 400   # 字符数：JD/面经以短段落为主，400 字能装下一个完整语义单元
 _CHUNK_OVERLAP = 50
 
-_client = chromadb.PersistentClient(path="chroma_db")
-_collection = _client.get_or_create_collection(
-    "job_kb", metadata={"hnsw:space": "cosine"}
-)
+# Chroma 懒加载：模块导入时不打开数据库文件，避免 uvicorn 热重载时新旧进程争锁
+_collection = None
+
+
+def _get_collection():
+    global _collection
+    if _collection is None:
+        client = chromadb.PersistentClient(path="chroma_db")
+        _collection = client.get_or_create_collection(
+            "job_kb", metadata={"hnsw:space": "cosine"}
+        )
+    return _collection
 
 # BM25 索引常驻内存，数据变更后置脏重建（语料在百级规模，重建是毫秒级）
 _bm25: BM25Okapi | None = None
@@ -83,7 +91,7 @@ def add_document(title: str, text: str, source: str, doc_id: str | None = None) 
 
     embeddings = embed_docs(chunks)
     ids = [f"{doc_id}-{i}" for i in range(len(chunks))]
-    _collection.add(
+    _get_collection().add(
         ids=ids,
         embeddings=embeddings,
         documents=chunks,
@@ -127,7 +135,7 @@ def remove_document(doc_id: str) -> None:
             s.delete(c)
         s.commit()
     try:
-        _collection.delete(where={"doc_id": doc_id})
+        _get_collection().delete(where={"doc_id": doc_id})
     except Exception:
         pass
     _mark_dirty()
@@ -145,10 +153,11 @@ def hybrid_search(query: str, top_k: int = 5, candidate_n: int = 15) -> list[dic
     hit_channel: dict[str, set] = {}
 
     # 通道一：向量（语义）
-    if _collection.count() > 0:
-        res = _collection.query(
+    col = _get_collection()
+    if col.count() > 0:
+        res = col.query(
             query_embeddings=[embed_query(query)],
-            n_results=min(candidate_n, _collection.count()),
+            n_results=min(candidate_n, col.count()),
         )
         for rank, cid in enumerate(res["ids"][0]):
             rrf[cid] = rrf.get(cid, 0) + 1 / (60 + rank + 1)

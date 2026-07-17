@@ -64,6 +64,14 @@ export async function parseJDUrl(url: string): Promise<JD> {
   return jsonOrThrow<JD>(res);
 }
 
+/** 直接粘贴职位描述文本解析（适用于登录墙页面） */
+export async function parseJDText(text: string): Promise<JD> {
+  const form = new FormData();
+  form.append("text", text);
+  const res = await fetch("/api/jd/parse-text", { method: "POST", body: form });
+  return jsonOrThrow<JD>(res);
+}
+
 export async function deleteJD(id: number): Promise<void> {
   await fetch(`/api/jd/${id}`, { method: "DELETE" });
 }

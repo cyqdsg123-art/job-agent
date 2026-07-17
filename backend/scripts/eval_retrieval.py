@@ -38,9 +38,10 @@ TOP_K = 3
 
 
 def _vector_only(query: str, top_k: int) -> list[str]:
-    res = kb._collection.query(
+    col = kb._get_collection()
+    res = col.query(
         query_embeddings=[embed_query(query)],
-        n_results=min(top_k, kb._collection.count()),
+        n_results=min(top_k, col.count()),
     )
     return [m["doc_id"] for m in res["metadatas"][0]]
 

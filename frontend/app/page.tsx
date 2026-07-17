@@ -4,13 +4,14 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import JDCard from "@/components/JDCard";
-import { parseJD, parseJDUrl } from "@/lib/api";
+import { parseJD, parseJDText, parseJDUrl } from "@/lib/api";
 import type { JD } from "@/lib/types";
 
 export default function HomePage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
   const [url, setUrl] = useState("");
+  const [pasteText, setPasteText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<JD | null>(null);
@@ -44,6 +45,21 @@ export default function HomePage() {
     setResult(null);
     try {
       setResult(await parseJDUrl(url));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "解析失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleParseText = async () => {
+    if (!pasteText.trim()) return;
+    setLoading(true);
+    setError("");
+    setResult(null);
+    try {
+      setResult(await parseJDText(pasteText));
+      setPasteText("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "解析失败");
     } finally {
@@ -114,6 +130,28 @@ export default function HomePage() {
             {loading ? "抓取中…" : "抓取解析"}
           </button>
         </div>
+      </div>
+
+      {/* 粘贴文本：登录墙页面（如 Boss 直聘网页版）全选复制后贴进来 */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
+        <div className="text-sm font-semibold">或粘贴职位描述文本</div>
+        <p className="text-xs text-slate-400">
+          需要登录的页面（如 Boss 直聘网页版）：在你的浏览器里全选(Ctrl+A)复制职位内容，贴到这里
+        </p>
+        <textarea
+          value={pasteText}
+          onChange={(e) => setPasteText(e.target.value)}
+          rows={4}
+          placeholder="把职位详情页的文字整段粘贴进来，多余的界面文字会被自动过滤…"
+          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+        />
+        <button
+          onClick={handleParseText}
+          disabled={!pasteText.trim() || loading}
+          className="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm disabled:opacity-40 hover:bg-slate-800"
+        >
+          {loading ? "解析中…" : "解析文本"}
+        </button>
       </div>
 
       {error && (

@@ -70,6 +70,18 @@ def parse_jd_url(url: str = Form(...), session: Session = Depends(get_session)):
     return _parse_and_save(raw_text, session)
 
 
+@router.post("/parse-text", response_model=JDOut)
+def parse_jd_from_text(text: str = Form(...), session: Session = Depends(get_session)):
+    """直接粘贴职位描述文本 → LLM 结构化 → 入库。
+
+    适用于登录墙页面：用户在自己浏览器里全选复制职位内容后粘贴。
+    """
+    raw_text = text.strip()
+    if len(raw_text) < 20:
+        raise HTTPException(422, "文本太短，请把职位描述完整粘贴进来")
+    return _parse_and_save(raw_text, session)
+
+
 @router.get("", response_model=list[JDOut])
 def list_jds(session: Session = Depends(get_session)):
     rows = session.exec(
