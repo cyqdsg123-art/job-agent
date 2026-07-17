@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 
 from ..db import get_session
 from ..models import JDOut, JobDescription
+from ..services import kb
 from ..services.jd_parser import parse_jd_text
 from ..services.ocr import image_to_text
 
@@ -42,6 +43,13 @@ async def parse_jd(file: UploadFile, session: Session = Depends(get_session)):
     session.add(row)
     session.commit()
     session.refresh(row)
+
+    # 同步入知识库（失败不影响解析主流程）
+    try:
+        kb.index_jd(row)
+    except Exception:
+        pass
+
     return JDOut.from_row(row)
 
 
@@ -68,4 +76,5 @@ def delete_jd(jd_id: int, session: Session = Depends(get_session)):
         raise HTTPException(404, "JD 不存在")
     session.delete(row)
     session.commit()
+    kb.remove_document(f"jd-{jd_id}")  # 知识库同步删除
     return {"ok": True}

@@ -8,3 +8,9 @@ pypdf>=5.1
 pydantic-settings>=2.6
 sse-starlette>=2.1
 python-multipart>=0.0.17
+# RAG 知识库
+chromadb>=0.5
+sentence-transformers>=3.0
+rank_bm25>=0.2
+jieba>=0.42
+pymupdf>=1.24

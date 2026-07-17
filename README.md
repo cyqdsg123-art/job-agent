@@ -9,7 +9,10 @@
 |---|---|
 | **JD 截图解析** | 上传 Boss 直聘等 App 的职位截图，RapidOCR 离线识别 + DeepSeek JSON 模式结构化提取（岗位/薪资/技能/职责/加分项），自动过滤界面噪声与 OCR 错字 |
 | **简历-JD 匹配** | LangGraph 三节点状态图：简历画像提取 → 逐维度打分（技能/项目/学历/加分项）→ 差距分析与改进建议，最后一步 **SSE 流式输出**，前端打字机渲染 |
+| **岗位知识库问答（RAG）** | 解析的 JD 自动入库 + 支持上传面经/资料（PDF 自动 OCR 兜底、图片 OCR、txt/md）；**混合检索（本地 BGE 向量 + BM25 + RRF 融合）**，回答带编号引用，检索质量见 [EVALS.md](EVALS.md) |
 | **投递话术生成** | 报告末尾自动生成 100 字以内、可直接发给招聘者的打招呼语 |
+
+> 关键选型的"为什么"（LangGraph vs Dify、Chroma vs Milvus、RRF vs 加权、SSE vs WebSocket…）见 [DECISIONS.md](DECISIONS.md)。
 
 ## 🏗 架构
 
@@ -37,6 +40,9 @@ venv/Scripts/pip install -r requirements.txt   # Linux/Mac: venv/bin/pip
 
 # 配置 API Key（https://platform.deepseek.com 注册获取）
 cp .env.example .env    # 编辑 .env 填入 DEEPSEEK_API_KEY
+
+# 下载本地 embedding 模型（RAG 知识库用，~100MB，从魔搭拉取无需梯子）
+git clone --depth 1 https://www.modelscope.cn/BAAI/bge-small-zh-v1.5.git models/bge-small-zh-v1.5
 
 venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
 ```

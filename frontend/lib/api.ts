@@ -1,5 +1,5 @@
 /** 后端 API 封装：普通请求 + SSE 流式解析 */
-import type { JD, MatchHandlers } from "./types";
+import type { JD, KBDocMeta, MatchHandlers, AskHandlers } from "./types";
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -8,6 +8,41 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
   }
   return res.json();
 }
+
+/** 读取并解析 SSE 响应流（兼容 \n 与 \r\n 换行），每帧回调 onEvent */
+async function readSSE(
+  res: Response,
+  onEvent: (event: string, data: unknown) => void,
+): Promise<void> {
+  if (!res.ok || !res.body) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail ?? `请求失败（${res.status}）`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let m: RegExpMatchArray | null;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    while ((m = buffer.match(/\r?\n\r?\n/)) && m.index !== undefined) {
+      const frame = buffer.slice(0, m.index);
+      buffer = buffer.slice(m.index + m[0].length);
+      let event = "message";
+      const dataLines: string[] = [];
+      for (const line of frame.split(/\r?\n/)) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
+        // 忽略 id: / retry: / 注释行
+      }
+      if (dataLines.length) onEvent(event, JSON.parse(dataLines.join("\n")));
+    }
+  }
+}
+
+// ---------- JD ----------
 
 /** 上传招聘截图并解析 */
 export async function parseJD(file: File): Promise<JD> {
@@ -25,10 +60,9 @@ export async function deleteJD(id: number): Promise<void> {
   await fetch(`/api/jd/${id}`, { method: "DELETE" });
 }
 
-/**
- * 发起匹配并解析 SSE 流。
- * 后端事件序列：profile → scores → advice_delta* → done；出错时收到 error。
- */
+// ---------- 匹配 ----------
+
+/** 发起匹配：SSE 事件 profile → scores → advice_delta* → done */
 export async function streamMatch(
   jdId: number,
   resume: { text?: string; file?: File },
@@ -40,54 +74,51 @@ export async function streamMatch(
   if (resume.text) form.append("resume_text", resume.text);
 
   const res = await fetch("/api/match", { method: "POST", body: form });
-  if (!res.ok || !res.body) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.detail ?? `请求失败（${res.status}）`);
-  }
+  await readSSE(res, (event, data) => {
+    if (event === "profile") handlers.onProfile?.(data as never);
+    else if (event === "scores") handlers.onScores?.(data as never);
+    else if (event === "advice_delta") handlers.onAdviceDelta?.(data as string);
+    else if (event === "done") handlers.onDone?.(data as string);
+    else if (event === "error") handlers.onError?.(data as string);
+  });
+}
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
+// ---------- 知识库 ----------
 
-  const dispatch = (event: string, dataRaw: string) => {
-    const data = JSON.parse(dataRaw);
-    switch (event) {
-      case "profile":
-        handlers.onProfile?.(data);
-        break;
-      case "scores":
-        handlers.onScores?.(data);
-        break;
-      case "advice_delta":
-        handlers.onAdviceDelta?.(data);
-        break;
-      case "done":
-        handlers.onDone?.(data);
-        break;
-      case "error":
-        handlers.onError?.(data);
-        break;
-    }
-  };
+/** 上传资料入库：pdf/图片(自动OCR)/txt/md 或纯文本 */
+export async function uploadKBDoc(input: {
+  file?: File;
+  title?: string;
+  text?: string;
+}): Promise<{ doc_id: string; chars: number }> {
+  const form = new FormData();
+  if (input.file) form.append("file", input.file);
+  if (input.title) form.append("title", input.title);
+  if (input.text) form.append("text", input.text);
+  const res = await fetch("/api/kb/upload", { method: "POST", body: form });
+  return jsonOrThrow(res);
+}
 
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+export async function listKBDocs(): Promise<KBDocMeta[]> {
+  return jsonOrThrow<KBDocMeta[]>(await fetch("/api/kb/docs"));
+}
 
-    // SSE 帧以空行分隔（sse-starlette 用 \r\n 换行，需两种都兼容）
-    let m: RegExpMatchArray | null;
-    while ((m = buffer.match(/\r?\n\r?\n/)) && m.index !== undefined) {
-      const frame = buffer.slice(0, m.index);
-      buffer = buffer.slice(m.index + m[0].length);
-      let event = "message";
-      const dataLines: string[] = [];
-      for (const line of frame.split(/\r?\n/)) {
-        if (line.startsWith("event:")) event = line.slice(6).trim();
-        else if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
-        // 忽略 id: / retry: / 注释行
-      }
-      if (dataLines.length) dispatch(event, dataLines.join("\n"));
-    }
-  }
+export async function deleteKBDoc(id: string): Promise<void> {
+  await fetch(`/api/kb/docs/${id}`, { method: "DELETE" });
+}
+
+/** 知识库问答：SSE 事件 sources → answer_delta* → done */
+export async function streamAsk(
+  question: string,
+  handlers: AskHandlers,
+): Promise<void> {
+  const form = new FormData();
+  form.append("question", question);
+  const res = await fetch("/api/kb/ask", { method: "POST", body: form });
+  await readSSE(res, (event, data) => {
+    if (event === "sources") handlers.onSources?.(data as never);
+    else if (event === "answer_delta") handlers.onAnswerDelta?.(data as string);
+    else if (event === "done") handlers.onDone?.(data as string);
+    else if (event === "error") handlers.onError?.(data as string);
+  });
 }

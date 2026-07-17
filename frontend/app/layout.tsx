@@ -11,6 +11,7 @@ const nav = [
   { href: "/", label: "解析截图" },
   { href: "/jd", label: "JD 列表" },
   { href: "/match", label: "简历匹配" },
+  { href: "/ask", label: "岗位问答" },
 ];
 
 export default function RootLayout({

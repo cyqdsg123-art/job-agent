@@ -41,3 +41,28 @@ export interface MatchHandlers {
   onDone?: (fullAdvice: string) => void;
   onError?: (message: string) => void;
 }
+
+// ---------- 知识库 ----------
+
+export interface KBDocMeta {
+  id: string;
+  title: string;
+  source: string; // jd / upload
+  created_at: string;
+}
+
+export interface KBSource {
+  chunk_id: string;
+  doc_id: string;
+  title: string;
+  text: string;
+  channels: string[]; // vector / bm25
+  rrf_score: number;
+}
+
+export interface AskHandlers {
+  onSources?: (sources: KBSource[]) => void;
+  onAnswerDelta?: (chunk: string) => void;
+  onDone?: (fullAnswer: string) => void;
+  onError?: (message: string) => void;
+}

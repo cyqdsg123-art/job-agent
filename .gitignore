@@ -16,3 +16,7 @@ Thumbs.db
 
 # 上传的临时文件
 backend/uploads/
+
+# 本地 embedding 模型（从魔搭下载，~100MB 不入库）
+backend/models/
+backend/chroma_db/

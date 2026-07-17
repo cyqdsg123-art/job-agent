@@ -24,6 +24,27 @@ class JobDescription(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
 
 
+# ---------- 知识库 ----------
+
+class KBDoc(SQLModel, table=True):
+    """知识库文档（一份 JD / 一篇面经 / 一份资料）。"""
+
+    id: str = Field(primary_key=True)   # 如 jd-3 / doc-uuid
+    title: str = ""
+    source: str = ""                    # jd / upload
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
+class KBChunk(SQLModel, table=True):
+    """文档切块（BM25 语料与引用展示的数据源，向量存 Chroma）。"""
+
+    id: str = Field(primary_key=True)   # {doc_id}-{seq}
+    doc_id: str = Field(index=True)
+    seq: int = 0
+    title: str = ""
+    text: str = ""
+
+
 # ---------- LLM 结构化提取结果 ----------
 
 class ParsedJD(BaseModel):
