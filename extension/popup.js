@@ -26,11 +26,9 @@ btn.addEventListener("click", async () => {
       const injections = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
-          // 简单粗暴：取 body 全部 innerText（去 script/style），让 LLM 自己做噪声过滤
-          const doc = document.implementation.createHTMLDocument("");
-          doc.body.innerHTML = document.body.innerHTML;
-          doc.querySelectorAll("script,style,noscript,svg").forEach((e) => e.remove());
-          return (doc.body.innerText || "").replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+          // v3: 直接取 body.innerText，不克隆不解析（SPA 页面最可靠）
+          const raw = document.body?.innerText || document.body?.textContent || "";
+          return raw.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
         },
       });
       extracted = injections?.[0]?.result || "";
@@ -50,8 +48,8 @@ btn.addEventListener("click", async () => {
       return;
     }
 
-    // 3) 发给本地后端解析
-    status.textContent = `已提取 ${extracted.length} 字，正在解析…`;
+    // 2b) 先更新状态，让用户看到提取结果
+    status.textContent = `已提取 ${extracted.length} 字（预览：${extracted.slice(0, 60)}…）`;
     const form = new FormData();
     form.append("text", extracted);
     const res = await fetch("http://localhost:8000/api/jd/parse-text", { method: "POST", body: form });
