@@ -3,9 +3,10 @@
   "name": "求职助手 Agent · 一键采集",
   "version": "1.0",
   "description": "在招聘网站职位详情页点击插件，一键采集正文内容并发送至本地解析。",
-  "permissions": ["activeTab", "storage"],
+  "permissions": ["activeTab", "storage", "tabs"],
   "host_permissions": [
-    "http://localhost:8000/*"
+    "http://localhost:8000/*",
+    "<all_urls>"
   ],
   "action": {
     "default_popup": "popup.html",

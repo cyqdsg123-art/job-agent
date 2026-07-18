@@ -1,4 +1,4 @@
-// popup.js：点击采集按钮 → 注入 content script → 提取文字 → 发给本地后端解析
+// popup.js v4：截图当前标签页可见区域 → 发给后端 OCR + LLM 解析
 const $ = (s) => document.querySelector(s);
 const btn = $("#collect");
 const result = $("#result");
@@ -12,60 +12,36 @@ function show(cls, msg) {
 
 btn.addEventListener("click", async () => {
   btn.disabled = true;
-  btn.textContent = "提取页面文字中…";
+  btn.textContent = "截图中…";
   show("");
 
   try {
-    // 1) 获取当前标签页
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error("无法获取当前标签页");
 
-    // 2) 注入 content script 提取正文
-    let extracted = "";
-    try {
-      const injections = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => {
-          // v3: 直接取 body.innerText，不克隆不解析（SPA 页面最可靠）
-          const raw = document.body?.innerText || document.body?.textContent || "";
-          return raw.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
-        },
-      });
-      extracted = injections?.[0]?.result || "";
-    } catch (e) {
-      // content script 注入可能失败（受限页面如 chrome://），回退到只读 innerText
-      const fallback = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => document.body?.innerText || "",
-      });
-      extracted = fallback?.[0]?.result || "";
-    }
+    // 截取当前标签页可见区域
+    status.textContent = "正在截图…";
+    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+    const blob = await (await fetch(dataUrl)).blob();
 
-    if (!extracted || extracted.length < 20) {
-      show("info", `提取文字不足 20 字（实际 ${extracted.length} 字）：\n\n该页面可能需要先登录，或当前不是职位详情页。\n请先登录招聘网站并打开具体的职位详情。`);
-      btn.disabled = false;
-      btn.textContent = "📋 一键采集";
-      return;
-    }
-
-    // 2b) 先更新状态，让用户看到提取结果
-    status.textContent = `已提取 ${extracted.length} 字（预览：${extracted.slice(0, 60)}…）`;
+    // 发给后端 OCR+LLM 解析
+    status.textContent = `截图 ${(blob.size / 1024).toFixed(0)}KB，正在 OCR + LLM 解析（约 10 秒）…`;
     const form = new FormData();
-    form.append("text", extracted);
-    const res = await fetch("http://localhost:8000/api/jd/parse-text", { method: "POST", body: form });
+    form.append("file", blob, "screenshot.png");
+    const res = await fetch("http://localhost:8000/api/jd/parse", { method: "POST", body: form });
 
     if (res.ok) {
       const jd = await res.json();
-      show("success", `✅ 解析成功！\n\n📌 ${jd.title}\n💰 ${jd.salary || "—"}\n📍 ${jd.location || "—"}\n\n已自动入库并进入知识库，\n去 http://localhost:3000 看看吧`);
+      show("success", `✅ 解析成功！\n\n📌 ${jd.title}\n💰 ${jd.salary || "—"}\n📍 ${jd.location || "—"}\n\n已自动入库并进入知识库`);
       status.textContent = "完成 ✅";
     } else {
       const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
       show("error", `解析失败：${err.detail}`);
     }
   } catch (e) {
-    show("error", `连接后端失败：${e instanceof Error ? e.message : "未知错误"}\n\n请确认后端已启动 (http://localhost:8000)`);
+    show("error", `失败：${e instanceof Error ? e.message : "未知"}\n请确认后端已启动`);
   } finally {
     btn.disabled = false;
-    btn.textContent = "📋 一键采集";
+    btn.textContent = "📸 一键截图采集";
   }
 });
