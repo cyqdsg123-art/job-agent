@@ -26,12 +26,11 @@ btn.addEventListener("click", async () => {
       const injections = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
-          // 从 body 克隆一份，删掉 script/style/nav/footer/header 再取 visibleText
-          const clone = document.body.cloneNode(true);
-          clone.querySelectorAll("script,style,nav,footer,header,button,svg,img,video,iframe,[role='banner'],[role='navigation'],.nav,.navbar,.footer,.sidebar,.menu").forEach((el) => el.remove());
-          // 再清理一遍属性里可能含的隐藏元素
-          clone.querySelectorAll("[style*='display:none'],[style*='display: none'],[hidden],.hidden").forEach((el) => el.remove());
-          return (clone.textContent || "").replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+          // 简单粗暴：取 body 全部 innerText（去 script/style），让 LLM 自己做噪声过滤
+          const doc = document.implementation.createHTMLDocument("");
+          doc.body.innerHTML = document.body.innerHTML;
+          doc.querySelectorAll("script,style,noscript,svg").forEach((e) => e.remove());
+          return (doc.body.innerText || "").replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
         },
       });
       extracted = injections?.[0]?.result || "";
@@ -44,8 +43,8 @@ btn.addEventListener("click", async () => {
       extracted = fallback?.[0]?.result || "";
     }
 
-    if (!extracted || extracted.length < 80) {
-      show("info", `提取文字不足 80 字（实际 ${extracted.length} 字）：\n\n该页面可能需要先登录，或当前不是职位详情页。\n请先登录招聘网站并打开具体的职位详情。`);
+    if (!extracted || extracted.length < 20) {
+      show("info", `提取文字不足 20 字（实际 ${extracted.length} 字）：\n\n该页面可能需要先登录，或当前不是职位详情页。\n请先登录招聘网站并打开具体的职位详情。`);
       btn.disabled = false;
       btn.textContent = "📋 一键采集";
       return;
