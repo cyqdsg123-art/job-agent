@@ -32,7 +32,20 @@
 
 ## 🚀 快速开始
 
-### 1. 后端
+### Docker 一键部署（推荐）
+
+```bash
+# 1. 配置 API Key
+cp .env.example .env   # 编辑 .env 填入 DEEPSEEK_API_KEY
+
+# 2. 启动
+docker compose up -d --build
+```
+> 首次构建约 3-5 分钟（含依赖下载和 BGE 模型拉取）。启动后 http://localhost:3000 。
+
+### 本地开发
+
+#### 1. 后端
 
 ```bash
 cd backend

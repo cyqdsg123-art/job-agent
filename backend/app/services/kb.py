@@ -22,13 +22,16 @@ _CHUNK_SIZE = 400   # 字符数：JD/面经以短段落为主，400 字能装下
 _CHUNK_OVERLAP = 50
 
 # Chroma 懒加载：模块导入时不打开数据库文件，避免 uvicorn 热重载时新旧进程争锁
+import os as _os  # noqa: E402
+
 _collection = None
 
 
 def _get_collection():
     global _collection
     if _collection is None:
-        client = chromadb.PersistentClient(path="chroma_db")
+        chroma_path = _os.path.join(_os.environ.get("DATA_DIR", _os.getcwd()), "chroma_db")
+        client = chromadb.PersistentClient(path=chroma_path)
         _collection = client.get_or_create_collection(
             "job_kb", metadata={"hnsw:space": "cosine"}
         )

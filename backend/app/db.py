@@ -1,9 +1,13 @@
 """SQLite 数据库：存储解析后的 JD 与匹配报告。"""
+import os
+
 from sqlmodel import Session, SQLModel, create_engine
 
-# 数据库文件生成在 backend/ 目录下
+DATA_DIR = os.environ.get("DATA_DIR", os.getcwd())
+DB_PATH = os.path.join(DATA_DIR, "job_agent.db")
+
 engine = create_engine(
-    "sqlite:///job_agent.db",
+    f"sqlite:///{DB_PATH}",
     connect_args={"check_same_thread": False},
 )
 
