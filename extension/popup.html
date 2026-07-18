@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>求职助手 Agent · 一键采集</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { width: 300px; font-family: system-ui, 'PingFang SC', sans-serif; padding: 16px; font-size: 13px; color: #1e293b; }
+    h1 { font-size: 15px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    h1 span { color: #6366f1; }
+    #status { font-size: 12px; color: #64748b; margin-bottom: 12px; }
+    button { width: 100%; padding: 10px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+    button.primary { background: #6366f1; color: #fff; }
+    button.primary:hover { background: #4f46e5; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    #result { margin-top: 12px; padding: 10px; border-radius: 8px; font-size: 12px; display: none; white-space: pre-wrap; word-break: break-all; }
+    #result.success { display: block; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    #result.error { display: block; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    #result.info { display: block; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  </style>
+</head>
+<body>
+  <h1><span>🎯</span>求职助手 Agent</h1>
+  <p id="status">在当前页面点击采集职位内容</p>
+  <button id="collect" class="primary">📋 一键采集</button>
+  <div id="result"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

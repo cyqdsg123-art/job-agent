@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "求职助手 Agent · 一键采集",
+  "version": "1.0",
+  "description": "在招聘网站职位详情页点击插件，一键采集正文内容并发送至本地解析。",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "http://localhost:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "采集当前职位"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
