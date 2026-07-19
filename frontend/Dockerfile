@@ -1,5 +1,6 @@
 # ---- 构建阶段 ----
-FROM node:24-alpine AS builder
+# 国内无法直连 Docker Hub，使用 docker.m.daocloud.io 镜像
+FROM docker.m.daocloud.io/library/node:24-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --registry=https://registry.npmmirror.com
@@ -7,7 +8,7 @@ COPY . .
 RUN npm run build
 
 # ---- 运行阶段 ----
-FROM node:24-alpine AS runner
+FROM docker.m.daocloud.io/library/node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 

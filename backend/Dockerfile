@@ -1,4 +1,5 @@
-FROM python:3.13-slim
+# 国内无法直连 Docker Hub，使用 docker.m.daocloud.io 镜像
+FROM docker.m.daocloud.io/library/python:3.13-slim
 
 WORKDIR /app
 
