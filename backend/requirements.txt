@@ -1,3 +1,5 @@
+# opencv-python-headless 先装，避免 rapidocr 拉 GUI 版 opencv（Docker 里没 X11）
+opencv-python-headless>=4.8
 fastapi>=0.115
 uvicorn[standard]>=0.32
 sqlmodel>=0.0.22

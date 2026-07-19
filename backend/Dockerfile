@@ -3,12 +3,9 @@ FROM docker.m.daocloud.io/library/python:3.13-slim
 
 WORKDIR /app
 
-# 系统依赖：pymupdf 渲染 PDF、OpenCV(RapidOCR) X11 库、git-lfs 用于魔搭下载模型
+# 系统依赖：git-lfs(魔搭)、OpenCV/Pillow 运行时库
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git git-lfs \
-    libxcb1 libxcb-util1 libxcb-render0 libxcb-shape0 libxcb-xfixes0 \
-    libxkbcommon0 libxrender1 libxext6 libx11-6 libglib2.0-0t64 \
-    libgl1-mesa-glx \
+    git git-lfs libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git lfs install
