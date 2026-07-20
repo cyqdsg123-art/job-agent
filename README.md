@@ -9,7 +9,7 @@
 
 ## 🌐 在线 Demo
 
-**https://vast-steaks-throw.loca.lt**（首次访问输入本机公网 IP 验证⚠️ 免费隧道，关了电脑就失效）
+**https://green-eagles-swim.loca.lt**（首次访问输入本机公网 IP 验证⚠️ 免费隧道，关了电脑就失效）
 
 ## ✨ 功能
 
