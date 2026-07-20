@@ -1,7 +1,15 @@
 # 🎯 求职助手 Agent（Job Agent）
 
+[![Tech](https://img.shields.io/badge/stack-FastAPI%20%2B%20Next.js%20%2B%20LangGraph-blue)](https://github.com/cyqdsg123-art/job-agent)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-compose%20up-brightgreen)](https://github.com/cyqdsg123-art/job-agent#docker-一键部署推荐)
+
 > 上传招聘截图 → 自动 OCR + LLM 结构化解析 → 简历逐维度匹配打分 → 流式生成差距分析与投递话术。
 > 一个"吃自己的狗粮"的全栈 AI Agent 项目：我用它来找 AI 应用开发实习。
+
+## 🌐 在线 Demo
+
+**https://huge-signs-rescue.loca.lt**（首次访问输入本机公网 IP 验证）
 
 ## ✨ 功能
 
