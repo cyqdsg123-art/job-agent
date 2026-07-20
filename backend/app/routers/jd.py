@@ -15,7 +15,14 @@ router = APIRouter(prefix="/api/jd", tags=["jd"])
 
 
 def _parse_and_save(raw_text: str, session: Session) -> JDOut:
-    """LLM 结构化 → 存库 → 入知识库（截图与 URL 两条入口共用）。"""
+    """LLM 结构化 → 存库 → 入知识库（截图/URL/文本三条入口共用）。"""
+    # 按 OCR 原文去重：完全相同的截图重复解析不产生新记录
+    dup = session.exec(
+        select(JobDescription).where(JobDescription.raw_text == raw_text)
+    ).first()
+    if dup:
+        return JDOut.from_row(dup)
+
     try:
         parsed = parse_jd_text(raw_text)
     except RuntimeError as e:  # 未配置 API Key 等环境问题

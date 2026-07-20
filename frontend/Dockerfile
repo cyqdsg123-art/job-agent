@@ -1,6 +1,8 @@
 # ---- 构建阶段 ----
 # 国内无法直连 Docker Hub，使用 docker.m.daocloud.io 镜像
 FROM docker.m.daocloud.io/library/node:24-alpine AS builder
+ARG BACKEND_URL=http://backend:8000
+ENV BACKEND_URL=${BACKEND_URL}
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --registry=https://registry.npmmirror.com
