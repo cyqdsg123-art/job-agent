@@ -178,11 +178,13 @@ export async function startInterview(
   jdId: number,
   resumeText: string,
   repo?: string,
+  resumeFile?: File,
 ): Promise<InterviewStart> {
   const form = new FormData();
   form.append("jd_id", String(jdId));
   form.append("resume_text", resumeText);
   if (repo?.trim()) form.append("repo", repo.trim());
+  if (resumeFile) form.append("resume_file", resumeFile);
   const res = await fetch("/api/interview/start", { method: "POST", body: form });
   return jsonOrThrow<InterviewStart>(res);
 }

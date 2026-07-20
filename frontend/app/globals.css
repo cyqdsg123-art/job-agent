@@ -249,3 +249,35 @@ body {
   border-bottom: 1px solid #f1f5f9;
   font-size: 13px;
 }
+
+/* 表单标签 */
+.label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+}
+
+/* 文件上传区 */
+.file-upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px dashed #c4b5fd;
+  font-size: 12px;
+  color: #7c3aed;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.file-upload:hover {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: #a78bfa;
+}
+.file-upload input[type=file] {
+  display: none;
+}

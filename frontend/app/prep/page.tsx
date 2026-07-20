@@ -36,8 +36,8 @@ export default function PrepPage() {
 
       <div className="card rounded-2xl p-5 space-y-4">
         <div><label className="text-sm font-semibold text-slate-700 block mb-1.5">选择岗位</label><select value={jdId} onChange={(e) => setJdId(Number(e.target.value))} className="select">{jds.length === 0 ? <option value={0}>（请先在首页解析 JD）</option> : jds.map((jd) => (<option key={jd.id} value={jd.id}>{jd.title} · {jd.company}</option>))}</select></div>
-        <div><label className="text-sm font-semibold text-slate-700 block mb-1.5">你的简历</label><textarea value={resume} onChange={(e) => setResume(e.target.value)} rows={5} placeholder="粘贴简历内容" className="textarea" /></div>
-        <div><label className="text-sm font-semibold text-slate-700 block mb-1.5">代码仓库（可选）</label><input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="本地路径或 GitHub 链接" className="input" /><p className="text-xs text-slate-400 mt-1">已分析过的仓库秒级复用</p></div>
+        <div><label className="label">你的简历</label><textarea value={resume} onChange={(e) => setResume(e.target.value)} rows={5} placeholder="粘贴简历内容" className="textarea" /><label className="file-upload">📎 上传简历文件（文本/图片）<input type="file" accept=".txt,.md,.png,.jpg,.jpeg" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.type.startsWith('image/')) { const fd = new FormData(); fd.append('text',''); fd.append('file',f); try { const r = await fetch('/api/kb/upload',{method:'POST',body:fd}); const j = await r.json(); if(r.ok) setResume(j.doc_id); } catch {} } else { setResume(await f.text()); } }} /></label></div>
+        <div><label className="label">代码仓库（可选）</label><input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="本地路径或 GitHub 链接" className="input" /><p className="text-xs text-slate-400 mt-1">已分析过的仓库秒级复用</p></div>
         <button onClick={generate} disabled={running || !jdId || !resume.trim()} className="btn btn-primary w-full justify-center">{running ? "⏳ 生成中…" : "🚀 生成准备包"}</button>
         {error && <p className="text-sm text-rose-600 bg-rose-50 rounded-2xl p-3">{error}</p>}
       </div>

@@ -14,6 +14,7 @@ export default function InterviewPage() {
   const [jds, setJds] = useState<JD[]>([]);
   const [jdId, setJdId] = useState(0);
   const [resume, setResume] = useState("");
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [repo, setRepo] = useState("");
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -33,7 +34,7 @@ export default function InterviewPage() {
   const start = async () => {
     if (!jdId || !resume.trim()) return; setBusy(true); setError("");
     localStorage.setItem("resume_text", resume);
-    try { const r = await startInterview(jdId, resume, repo); setSessionId(r.session_id); setMsgs([{ kind: "question", text: r.question, meta: `第 ${r.round}/${r.total_rounds} 题 · ${r.focus}` }]); }
+    try { const r = await startInterview(jdId, resume, repo, resumeFile ?? undefined); setSessionId(r.session_id); setMsgs([{ kind: "question", text: r.question, meta: `第 ${r.round}/${r.total_rounds} 题 · ${r.focus}` }]); }
     catch (e) { setError(e instanceof Error ? e.message : "开始失败"); }
     finally { setBusy(false); }
   };
@@ -54,8 +55,8 @@ export default function InterviewPage() {
         <div><h1 className="text-2xl font-extrabold text-slate-800">🤖 模拟面试</h1><p className="text-sm text-slate-500 mt-1">AI 面试官基于 JD + 你的简历 + 代码仓库出题，5 轮流式点评</p></div>
         <div className="card rounded-2xl p-5 space-y-4">
           <div><label className="text-sm font-semibold text-slate-700 block mb-1.5">选择岗位</label><select value={jdId} onChange={(e) => setJdId(Number(e.target.value))} className="select">{jds.length === 0 ? <option value={0}>（请先在首页解析 JD）</option> : jds.map((jd) => (<option key={jd.id} value={jd.id}>{jd.title} · {jd.company}</option>))}</select></div>
-          <div><label className="text-sm font-semibold text-slate-700 block mb-1.5">你的简历</label><textarea value={resume} onChange={(e) => setResume(e.target.value)} rows={6} placeholder="粘贴简历内容" className="textarea" /></div>
-          <div><label className="text-sm font-semibold text-slate-700 block mb-1.5">代码仓库（可选）</label><input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="本地路径或 GitHub 链接" className="input" /><p className="text-xs text-slate-400 mt-1">面试官将读你的真实代码提问</p></div>
+          <div><label className="label">你的简历</label><textarea value={resume} onChange={(e) => setResume(e.target.value)} rows={6} placeholder="粘贴简历内容" className="textarea" /><label className="file-upload">📎 上传简历文件（PDF/图片/文本）<input type="file" accept=".pdf,.png,.jpg,.jpeg,.txt,.md" onChange={(e) => { const f = e.target.files?.[0]; if (f) setResumeFile(f); }} /></label>{resumeFile && <p className="text-xs text-purple-600 mt-1">已选择: {resumeFile.name}</p>}</div>
+          <div><label className="label">代码仓库（可选）</label><input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="本地路径或 GitHub 链接" className="input" /><p className="text-xs text-slate-400 mt-1">面试官将读你的真实代码提问</p></div>
           <button onClick={start} disabled={busy || !jdId || !resume.trim()} className="btn btn-primary w-full justify-center">{busy ? "⏳ 准备中…" : "🚀 开始面试"}</button>
           {error && <p className="text-sm text-rose-600 bg-rose-50 rounded-2xl p-3">{error}</p>}
         </div>

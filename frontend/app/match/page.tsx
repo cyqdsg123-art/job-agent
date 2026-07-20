@@ -53,7 +53,7 @@ function MatchPageInner() {
       {/* 输入区 */}
       <div className="card rounded-2xl p-5 space-y-4">
         <div>
-          <label className="text-sm font-semibold text-slate-700 block mb-1.5">选择岗位</label>
+          <label className="label">选择岗位</label>
           <select value={jdId} onChange={(e) => setJdId(Number(e.target.value))}
             className="select">
             {jds.length === 0 && <option value={0}>（请先在首页解析一个 JD）</option>}
@@ -63,7 +63,7 @@ function MatchPageInner() {
           </select>
         </div>
         <div>
-          <label className="text-sm font-semibold text-slate-700 block mb-1.5">简历</label>
+          <label className="label">简历</label>
           <textarea value={resumeText} onChange={(e) => setResumeText(e.target.value)}
             rows={6} placeholder="粘贴简历：教育经历、技能、项目经历…" className="textarea" />
           <input type="file" accept=".pdf"
