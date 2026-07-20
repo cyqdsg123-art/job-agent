@@ -28,7 +28,7 @@ btn.addEventListener("click", async () => {
     status.textContent = `截图 ${(blob.size / 1024).toFixed(0)}KB，正在 OCR + LLM 解析（约 10 秒）…`;
     const form = new FormData();
     form.append("file", blob, "screenshot.png");
-    const res = await fetch("http://localhost:8000/api/jd/parse", { method: "POST", body: form });
+    const res = await fetch("http://localhost:9000/api/jd/parse", { method: "POST", body: form });
 
     if (res.ok) {
       const jd = await res.json();
